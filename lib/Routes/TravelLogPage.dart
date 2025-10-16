@@ -91,6 +91,29 @@ class _TravelLogPageState extends State<TravelLogPage>{
     FocusScope.of(context).unfocus();
   }
 
+  void removeAt(id) async{
+    final db = await userData.initDB();
+    await userData.deleteData(db, id);
+    debugPrint(tripData.toString());
+    setState(() {
+      tripData.removeWhere((trip) => trip['ID'] == id); // delete from list by id
+    });
+    ScaffoldMessenger.of(this.context).clearSnackBars();
+    ScaffoldMessenger.of(this.context).showSnackBar(
+        SnackBar(content: Text('Deleted Successfully!',textAlign: TextAlign.center,style: TextStyle(
+          fontSize: 16,fontWeight: FontWeight.bold,color: Colors.white,
+        ),),
+          duration: Duration(seconds: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          margin: EdgeInsets.symmetric(vertical: 100,horizontal: 50),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Color(0xE2191818),
+        )
+    );
+
+    debugPrint("Deleted item with ID: $id");
+  }
+
   @override
   Widget build(BuildContext context){
     final height = MediaQuery.of(context).size.height;
@@ -184,8 +207,6 @@ class _TravelLogPageState extends State<TravelLogPage>{
                 ),
                 style: TextStyle(fontSize: 18),
                 onChanged: (value){
-                  // _searchController listener already calls _filterTrips,
-                  // but keep this for immediate responsiveness
                   _filterTrips(value);
                 },
               ),
@@ -214,104 +235,124 @@ class _TravelLogPageState extends State<TravelLogPage>{
                       firstImagePath = imagesDynamic.first as String?;
                     }
 
-                    return ElevatedButton(
-                      onPressed: () {
-                        debugPrint("Id : $id");
-                        Navigator.push(context,MaterialPageRoute(builder: (context) => TripDetailsPage(id: id)))
-                            .then((_) => getTripData()); // refresh when coming back
-                      },
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        padding: EdgeInsets.zero,
-                        backgroundColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Container(
-                        width: width * 0.80,
-                        height: height * 0.16,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF5F5F5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            double parentWidth = constraints.maxWidth;
-                            double parentHeight = constraints.maxHeight;
-
-                            double innerHeight = parentHeight - 40;
-
-                            return Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Container(
-                                    height: innerHeight * 0.9,
-                                    width: parentWidth * 0.25,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      image: DecorationImage(
-                                        image: (firstImagePath == null || firstImagePath.isEmpty)
-                                            ? const AssetImage('assets/Images/Paris.jpg') as ImageProvider
-                                            : FileImage(File(firstImagePath)),
-                                        fit: BoxFit.cover,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            row['title'] ?? '',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 20,
-                                              color: Color(0xff3c3c3c),
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 1,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Flexible(
-                                          child: Text(
-                                            row['location'] ?? '',
-                                            style: const TextStyle(
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w400,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                            maxLines: 2,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          row['date'] ?? '',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.blueGrey,
-                                            fontWeight: FontWeight.w400,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines: 1,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
+                    return Stack(
+                      children : [
+                        ElevatedButton(
+                          onPressed: () {
+                            debugPrint("Id : $id");
+                            Navigator.push(context,MaterialPageRoute(builder: (context) => TripDetailsPage(id: id)))
+                                .then((_) => getTripData()); // refreshes when coming back
                           },
+                          style: ElevatedButton.styleFrom(
+                            elevation: 0,
+                            padding: EdgeInsets.zero,
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Container(
+                            width: width * 0.90,
+                            height: height * 0.16,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF5F5F5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                double parentWidth = constraints.maxWidth;
+                                double parentHeight = constraints.maxHeight;
+
+                                double innerHeight = parentHeight - 40;
+
+                                return Padding(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    crossAxisAlignment: CrossAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        height: innerHeight * 0.9,
+                                        width: parentWidth * 0.25,
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          image: DecorationImage(
+                                            image: (firstImagePath == null || firstImagePath.isEmpty)
+                                                ? const AssetImage('assets/Images/Paris.jpg') as ImageProvider
+                                                : FileImage(File(firstImagePath)),
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 20),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                row['title'] ?? '',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 20,
+                                                  color: Color(0xff3c3c3c),
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 1,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Flexible(
+                                              child: Text(
+                                                row['location'] ?? '',
+                                                style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w400,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                maxLines: 2,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              row['date'] ?? '',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.blueGrey,
+                                                fontWeight: FontWeight.w400,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines: 1,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
                         ),
-                      ),
+                        Positioned(
+                          top: 8,
+                          right: 20,
+                          child: GestureDetector(
+                            onTap: () => removeAt(id),
+                            child: Container(
+                              height: 40,
+                              width: 40,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                              ),
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.delete, size: 24, color: Color(0xff5d9dff)),
+                            ),
+                          ),
+                        ),
+                      ]
                     );
                   },
                   separatorBuilder: (context,index){

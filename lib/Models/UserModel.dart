@@ -44,10 +44,12 @@ class UserModel{
     );
   }
 
+  // Fetch Data form table
   Future<List<Map<String,dynamic>>> getData(Database db) async{
     return await db.query('tripDetails',orderBy: 'id DESC');
   }
 
+  //delete data from table
   Future<void> deleteData(Database db, int id) async{
     await db.delete(
       'tripDetails',
