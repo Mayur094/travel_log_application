@@ -7,29 +7,46 @@ import 'package:geocoding/geocoding.dart';
 import '../Models/UserModel.dart';
 import 'package:flutter/material.dart';
 
-class TripDetailsPage extends StatefulWidget{
-  final int id;
+/// TripDetailsPage
+/// - Loads a single trip's details from local SQLite (via UserModel)
+/// - Shows time (updates every second)
+/// - Displays images (horizontal gallery) with full-screen preview on tap
+/// - Allows opening the trip location in maps (via URL)
+class TripDetailsPage extends StatefulWidget {
+  final int id; // The trip ID passed from the list page (used for locating record)
   const TripDetailsPage({super.key, required this.id});
   @override
   State<TripDetailsPage> createState() => _TripDetailsPageState();
 }
 
-class _TripDetailsPageState extends State<TripDetailsPage>{
+class _TripDetailsPageState extends State<TripDetailsPage> {
+  // DB model helper
   UserModel user = UserModel();
 
+  // Clock string and timer (updates every minute/second as you configured)
   late String _timeString;
   late Timer _timer;
+
+  // Trip fields loaded from DB
   String? _title;
   String? _location;
   String? _desc;
-  String _imagePath = ""; // JSON string from DB
+
+  // Raw JSON string from DB and parsed list of image paths
+  String _imagePath = ""; // stored JSON string (e.g., '["/path/img1.jpg", ...]')
   List<String> _imagePathsList = [];
-  List<Map<String,dynamic>> _tripData = [];
+
+  // Local copy of all trip rows fetched (used to pick the specific trip)
+  List<Map<String, dynamic>> _tripData = [];
+
+  // Loading flag to prevent multiple simultaneous launches
   bool _isLoading = false;
 
-  // ------------------ openLocationOnMap and _showSnackBar unchanged ------------------
-  Future<void> openLocationOnMap(String? placeName) async{
-    if (_isLoading) return;
+  // ------------------ openLocationOnMap and _showSnackBar ------------------
+  /// Attempts to open the given placeName in Google Maps (web search URL).
+  /// Uses url_launcher and handles errors + loading state.
+  Future<void> openLocationOnMap(String? placeName) async {
+    if (_isLoading) return; // avoid concurrent attempts
     setState(() => _isLoading = true);
 
     if (placeName == null || placeName.trim().isEmpty) {
@@ -40,7 +57,8 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
 
     try {
       final encoded = Uri.encodeComponent(placeName);
-      final Uri googleMapsWeb = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+      final Uri googleMapsWeb =
+      Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
       debugPrint('Opening maps search URL: $googleMapsWeb');
 
       if (await canLaunchUrl(googleMapsWeb)) {
@@ -55,6 +73,8 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
       setState(() => _isLoading = false);
     }
   }
+
+  /// Utility to show an information or error SnackBar.
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -65,24 +85,30 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
     );
   }
 
-  // ------------------ getTripData: now parses imagePaths JSON ------------------
-  Future<void> getTripData() async{
+  // ------------------ getTripData: parse imagePaths JSON ------------------
+  /// Loads all trips from DB and populates fields for the trip with id = widget.id.
+  /// NOTE: current implementation uses `widget.id - 1` as an index into the fetched list.
+  /// That works if your DB returns rows in insertion order and IDs are contiguous starting at 1.
+  /// If your DB ordering or IDs differ, consider fetching by ID in UserModel.
+  Future<void> getTripData() async {
     Database db = await user.initDB();
     _tripData = await user.getData(db);
 
-    // guard for index
+    // Convert provided id to zero-based index — careful: this assumes a matching ordering.
     final int index = widget.id - 1;
     if (index < 0 || index >= _tripData.length) {
       _showSnackBar('Trip not found', isError: true);
       return;
     }
 
+    // Populate fields from the selected row
     _title = _tripData[index]['title'] as String?;
     _location = _tripData[index]['location'] as String?;
     _desc = _tripData[index]['description'] as String?;
     _imagePath = _tripData[index]['imagePaths'] as String? ?? '';
 
-    // Parse JSON string to List<String>
+    // Parse the JSON string (imagePaths) to a List<String>.
+    // If parsing fails or the stored value is not a list, we fallback to empty list.
     try {
       final parsed = jsonDecode(_imagePath);
       if (parsed is List) {
@@ -91,7 +117,6 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
         _imagePathsList = [];
       }
     } catch (e) {
-      // If parsing fails, keep list empty
       debugPrint('Failed to parse imagePaths JSON: $e');
       _imagePathsList = [];
     }
@@ -99,25 +124,31 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
     setState(() {});
   }
 
-  String _formattedTimeString(DateTime time){
-    return "${time.hour.toString().padLeft(2,'0')}:"
-        "${time.minute.toString().padLeft(2,'0')}";
+  /// Formats the time for display as "HH:mm".
+  String _formattedTimeString(DateTime time) {
+    return "${time.hour.toString().padLeft(2, '0')}:"
+        "${time.minute.toString().padLeft(2, '0')}";
   }
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
-    _timeString = _formattedTimeString(DateTime.now());
 
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer){
+    // Initialize and update the clock every second.
+    _timeString = _formattedTimeString(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
         _timeString = _formattedTimeString(DateTime.now());
       });
     });
+
+    // Load trip data for display
     getTripData();
   }
 
-  // open full-screen preview
+  // ------------------ Image preview dialog ------------------
+  /// Shows a full-screen preview of the tapped image (InteractiveViewer).
+  /// If the file doesn't exist, shows a small "not found" placeholder.
   void _openPreview(int tappedIndex) {
     showDialog(
       context: context,
@@ -150,7 +181,8 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
   }
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
+    // Use rounded double sizes to avoid occasional type mismatches
     final height = MediaQuery.of(context).size.height.roundToDouble();
     final width = MediaQuery.of(context).size.width.roundToDouble();
 
@@ -160,57 +192,79 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
         child: Center(
           child: Column(
             children: [
+              // Top row: time + menu
               Row(
                 children: [
-                  Text(_timeString,
+                  Text(
+                    _timeString,
                     style: TextStyle(
-                        fontFamily: 'Intern',fontWeight: FontWeight.w600,fontSize: 24,color: Color(
-                        0xff4c4c4c)
+                      fontFamily: 'Intern',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 24,
+                      color: Color(0xff4c4c4c),
                     ),
                   ),
                   const Spacer(),
                   PopupMenuButton(
                     color: Color(0xFFF5F5F5),
                     elevation: 0.5,
-                    offset: Offset(0,40),
+                    offset: Offset(0, 40),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    icon: const Icon(Icons.more_horiz,size: 40,),
+                    icon: const Icon(
+                      Icons.more_horiz,
+                      size: 40,
+                    ),
                     itemBuilder: (context) => [
-                      PopupMenuItem(value: 1,
+                      PopupMenuItem(
+                        value: 1,
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Icon(Icons.stacked_line_chart,size: 30,color: Color(
-                                0xff636368),),
-                            const Text('Statistics',
+                            const Icon(
+                              Icons.stacked_line_chart,
+                              size: 30,
+                              color: Color(0xff636368),
+                            ),
+                            const Text(
+                              'Statistics',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 22,
-                              ),),
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ],
-                    onSelected: (value){
-                      if(value == 1){
+                    onSelected: (value) {
+                      if (value == 1) {
                         Navigator.pushNamed(context, '/statistic');
                       }
                     },
                   ),
                 ],
               ),
-              const SizedBox(height: 20,),
+
+              const SizedBox(height: 20),
+
+              // Page title
               Row(
                 children: [
                   Text(
                     'Trip Details',
                     style: TextStyle(
-                      fontSize: 45,fontWeight: FontWeight.bold,fontFamily: 'Intern',color: Color(0xff3c3c3c),
+                      fontSize: 45,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Intern',
+                      color: Color(0xff3c3c3c),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 20,),
+
+              const SizedBox(height: 20),
+
+              // Title
               Row(
                 children: [
                   Flexible(
@@ -226,7 +280,10 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                   ),
                 ],
               ),
-              const SizedBox(height: 10,),
+
+              const SizedBox(height: 10),
+
+              // Location
               Row(
                 children: [
                   Flexible(
@@ -242,15 +299,22 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                   ),
                 ],
               ),
-              const SizedBox(height: 20,),
+
+              const SizedBox(height: 20),
 
               // ------------------ IMAGE GALLERY (horizontal) ------------------
+              // If images are present, show a horizontal ListView of thumbnails.
               if (_imagePathsList.isNotEmpty) ...[
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('Photos', style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xff303030),
-                  )),
+                  child: Text(
+                    'Photos',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff303030),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 SizedBox(
@@ -263,6 +327,7 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                       final path = _imagePathsList[index];
                       final file = File(path);
                       final exists = file.existsSync();
+
                       return GestureDetector(
                         onTap: () => _openPreview(index),
                         child: Container(
@@ -300,16 +365,21 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                 ),
                 const SizedBox(height: 20),
               ] else ...[
-                // If no images present, nothing or a small message
+                // If no images present, show a small hint
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('No photos added', style: TextStyle(
-                    fontSize: 16, color: Colors.grey[600],
-                  )),
+                  child: Text(
+                    'No photos added',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
               ],
 
+              // Notes / description
               Row(
                 children: [
                   Text(
@@ -322,7 +392,9 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                   )
                 ],
               ),
-              const SizedBox(height: 10,),
+
+              const SizedBox(height: 10),
+
               Row(
                 children: [
                   Flexible(
@@ -338,20 +410,22 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                   ),
                 ],
               ),
+
               Spacer(),
+
+              // Button to open the trip location in maps
               ElevatedButton(
-                onPressed: (){
-                  if(_location != null) {
+                onPressed: () {
+                  if (_location != null) {
                     openLocationOnMap(_location!);
-                  }
-                  else{
+                  } else {
                     ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No Location Provided'))
+                      const SnackBar(content: Text('No Location Provided')),
                     );
                   }
                 },
                 style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: width * 0.18,vertical: height * 0.02),
+                  padding: EdgeInsets.symmetric(horizontal: width * 0.18, vertical: height * 0.02),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -361,15 +435,17 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.location_on_rounded,color: Color(0xff5d9dff),size: 40,),
-                    SizedBox(width: 10,),
-                    Text('View on Map',style: TextStyle(
-                        fontWeight: FontWeight.w500,fontSize: 24,color: Colors.black
-                    ),),
+                    Icon(Icons.location_on_rounded, color: Color(0xff5d9dff), size: 40),
+                    SizedBox(width: 10),
+                    Text(
+                      'View on Map',
+                      style: TextStyle(fontWeight: FontWeight.w500, fontSize: 24, color: Colors.black),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 20,),
+
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -378,7 +454,7 @@ class _TripDetailsPageState extends State<TripDetailsPage>{
   }
 
   @override
-  void dispose(){
+  void dispose() {
     _timer.cancel();
     super.dispose();
   }
