@@ -47,7 +47,7 @@ class _AddDetailsState extends State<AddDetails> {
     borderSide: BorderSide(width: width, color: color),
   );
 
-  // textfield builder
+  // Text field builder
   Widget _buildTextField(TextEditingController controller, String hint, {int maxLines = 1}) {
     return TextField(
       controller: controller,
@@ -61,7 +61,7 @@ class _AddDetailsState extends State<AddDetails> {
     );
   }
 
-  // copy picked file to app documents and return new path
+  // coping picked file to app documents and return new path
   Future<String> _copyFileToAppDir(XFile picked) async {
     final dir = await getApplicationDocumentsDirectory();
     final newPath = join(dir.path, basename(picked.path));
@@ -91,7 +91,7 @@ class _AddDetailsState extends State<AddDetails> {
     }
   }
 
-  // remove image at index and update preview/json
+  // remove image at index and update preview
   void _removeImageAt(int index) {
     setState(() {
       final removed = imageList.removeAt(index);

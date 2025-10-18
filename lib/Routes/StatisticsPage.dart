@@ -59,7 +59,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   double _degToRad(double deg) => deg * pi / 180;
 
-  // calculate total distance across consecutive trip locations (in insertion order)
+  // calculating total distance across consecutive trip locations (in insertion order)
   void calculateTotalDistance() async {
     try {
       final db = await userData.initDB();
@@ -101,7 +101,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
     }
   }
 
-  // prepare data for trips-per-month chart
+  // prepares data for trips-per-month chart
   void tripsPerMonth() async {
     setState(() => isChartLoading = true);
     try {
@@ -114,7 +114,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         return DateTime(now.year, now.month - (monthsToShow - 1 - i), 1);
       });
 
-      // initialize counts for each month
+      // initializes counts for each month
       final counts = {
         for (final m in monthsList) "${m.year}-${m.month.toString().padLeft(2, '0')}": 0
       };
@@ -140,7 +140,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
         if (counts.containsKey(key)) counts[key] = (counts[key] ?? 0) + 1;
       }
 
-      // convert counts to chart data
+      // converting counts to chart data
       final spots = <FlSpot>[];
       final labels = <String>[];
       for (int i = 0; i < monthsList.length; i++) {

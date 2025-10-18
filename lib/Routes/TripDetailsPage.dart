@@ -3,15 +3,14 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:geocoding/geocoding.dart';
 import '../Models/UserModel.dart';
 import 'package:flutter/material.dart';
 
 /// TripDetailsPage
-/// - Loads a single trip's details from local SQLite (via UserModel)
-/// - Shows time (updates every second)
-/// - Displays images (horizontal gallery) with full-screen preview on tap
-/// - Allows opening the trip location in maps (via URL)
+/// Loads a single trip's details from local SQLite DB (via UserModel)
+/// Shows time (updates every second)
+/// Displays images (horizontal gallery) with full-screen preview on tap
+/// Allows opening the trip location in maps
 class TripDetailsPage extends StatefulWidget {
   final int id; // The trip ID passed from the list page (used for locating record)
   const TripDetailsPage({super.key, required this.id});
@@ -23,7 +22,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   // DB model helper
   UserModel user = UserModel();
 
-  // Clock string and timer (updates every minute/second as you configured)
+  // String timer
   late String _timeString;
   late Timer _timer;
 
@@ -33,7 +32,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   String? _desc;
 
   // Raw JSON string from DB and parsed list of image paths
-  String _imagePath = ""; // stored JSON string (e.g., '["/path/img1.jpg", ...]')
+  String _imagePath = ""; // stored JSON string ('["/path/img1.jpg", ...]')
   List<String> _imagePathsList = [];
 
   // Local copy of all trip rows fetched (used to pick the specific trip)
@@ -182,7 +181,6 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Use rounded double sizes to avoid occasional type mismatches
     final height = MediaQuery.of(context).size.height.roundToDouble();
     final width = MediaQuery.of(context).size.width.roundToDouble();
 

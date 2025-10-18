@@ -7,25 +7,25 @@ import 'package:travel_log/Routes/TripDetailsPage.dart';
 import '../Models/UserModel.dart';
 
 /// TravelLogPage
-/// - Fetches trip records from local SQLite via UserModel
-/// - Shows current time (updates every second)
-/// - Provides search (title/location/date)
-/// - Displays trips as tappable cards (navigates to details)
-/// - Allows deleting individual trips
+/// Fetches trip records from local SQLite via UserModel
+/// Shows current time (updates every second)
+/// Provides search (title/location/date)
+/// Displays trips as tappable cards (navigates to TripDetailsPage)
+/// Allows deleting individual trips
 class TravelLogPage extends StatefulWidget {
   @override
   State<TravelLogPage> createState() => _TravelLogPageState();
 }
 
 class _TravelLogPageState extends State<TravelLogPage> {
-  // Model that handles DB operations
+  // Object of the Model that handles DB operations
   UserModel userData = UserModel();
 
   // Current time string displayed in the app header
   late String _timeString;
   late Timer _timer;
 
-  // All trips loaded from DB and the currently displayed (possibly filtered) list.
+  // All trips loaded from DB and the currently displayed list.
   List<Map<String, dynamic>> allTrips = [];
   List<Map<String, dynamic>> tripData = [];
 
@@ -37,7 +37,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
     Database db = await userData.initDB();
     final List<Map<String, dynamic>> fetched = await userData.getData(db);
 
-    // Ensure we have concrete lists (avoid null issues)
+    // Ensures we have concrete lists (avoid null issues)
     allTrips = List<Map<String, dynamic>>.from(fetched);
     tripData = List<Map<String, dynamic>>.from(allTrips);
 
@@ -48,7 +48,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
   void initState() {
     super.initState();
 
-    // Initialize time string and update it every second.
+    // Initializing time string and updating it every second.
     _timeString = _formatedTimeString(DateTime.now());
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       setState(() {
@@ -61,7 +61,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
       _filterTrips(_searchController.text);
     });
 
-    // Load trips from DB
+    // Loading trips from DB
     getTripData();
   }
 
@@ -86,7 +86,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
       final location = (row['location'] ?? '').toString().toLowerCase();
       final date = (row['date'] ?? '').toString().toLowerCase();
 
-      // Support substring matching so partial dates or words work.
+      // Supports substring matching so partial dates or words work.
       return title.contains(q) || location.contains(q) || date.contains(q);
     }).toList();
 
@@ -149,7 +149,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
         child: Center(
           child: Column(
             children: [
-              // Top row: time + menu
+              // Top row: time + PopMenu
               Row(
                 children: [
                   Text(
@@ -259,7 +259,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
 
               const SizedBox(height: 30),
 
-              // Trip list (empty state handled)
+              // Trips list
               Expanded(
                 child: (tripData.isEmpty)
                     ? Center(child: Text('No Data'))
@@ -288,7 +288,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
                       firstImagePath = imagesDynamic.first as String?;
                     }
 
-                    // Card (button) for each trip. Tapping navigates to details.
+                    // Card (button) for each trip. Tapping navigates to TripDetails.
                     return Stack(children: [
                       ElevatedButton(
                         onPressed: () {
@@ -298,7 +298,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
                             MaterialPageRoute(
                               builder: (context) => TripDetailsPage(id: id),
                             ),
-                          ).then((_) => getTripData()); // Refresh after return
+                          ).then((_) => getTripData()); // Refreshes after return
                         },
                         style: ElevatedButton.styleFrom(
                           elevation: 0,
@@ -328,7 +328,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    // Thumbnail image (first image or fallback asset)
+                                    // Thumbnail image (first image or default asset)
                                     Container(
                                       height: innerHeight * 0.9,
                                       width: parentWidth * 0.25,
@@ -428,7 +428,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
 
               const SizedBox(height: 20),
 
-              // Button to navigate to AddDetails page (refresh after return)
+              // Button to navigate to AddDetails page
               ElevatedButton(
                 onPressed: () {
                   Navigator.pushNamed(context, '/addDetails').then((value) {
