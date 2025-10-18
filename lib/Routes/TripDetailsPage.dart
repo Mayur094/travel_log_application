@@ -89,25 +89,24 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
   /// NOTE: current implementation uses `widget.id - 1` as an index into the fetched list.
   /// That works if your DB returns rows in insertion order and IDs are contiguous starting at 1.
   /// If your DB ordering or IDs differ, consider fetching by ID in UserModel.
+  // Load trip data by ID (safe — does not assume row order)
   Future<void> getTripData() async {
-    Database db = await user.initDB();
-    _tripData = await user.getData(db);
+    final db = await user.initDB();
 
-    // Convert provided id to zero-based index — careful: this assumes a matching ordering.
-    final int index = widget.id - 1;
-    if (index < 0 || index >= _tripData.length) {
+    // Use new getById to fetch specific row
+    final row = await user.getById(db, widget.id);
+
+    if (row == null) {
       _showSnackBar('Trip not found', isError: true);
       return;
     }
 
-    // Populate fields from the selected row
-    _title = _tripData[index]['title'] as String?;
-    _location = _tripData[index]['location'] as String?;
-    _desc = _tripData[index]['description'] as String?;
-    _imagePath = _tripData[index]['imagePaths'] as String? ?? '';
+    _title = row['title'] as String?;
+    _location = row['location'] as String?;
+    _desc = row['description'] as String?;
+    _imagePath = row['imagePaths'] as String? ?? '';
 
-    // Parse the JSON string (imagePaths) to a List<String>.
-    // If parsing fails or the stored value is not a list, we fallback to empty list.
+    // Parse JSON string to List<String>
     try {
       final parsed = jsonDecode(_imagePath);
       if (parsed is List) {
@@ -122,6 +121,7 @@ class _TripDetailsPageState extends State<TripDetailsPage> {
 
     setState(() {});
   }
+
 
   /// Formats the time for display as "HH:mm".
   String _formattedTimeString(DateTime time) {

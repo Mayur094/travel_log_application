@@ -36,6 +36,7 @@ class _TravelLogPageState extends State<TravelLogPage> {
   Future<void> getTripData() async {
     Database db = await userData.initDB();
     final List<Map<String, dynamic>> fetched = await userData.getData(db);
+    debugPrint('DB rows after insert: $fetched');
 
     // Ensures we have concrete lists (avoid null issues)
     allTrips = List<Map<String, dynamic>>.from(fetched);
@@ -400,8 +401,8 @@ class _TravelLogPageState extends State<TravelLogPage> {
 
                       // Delete icon positioned on top-right of the card
                       Positioned(
-                        top: 8,
-                        right: 20,
+                        top: 4,
+                        right: 10,
                         child: GestureDetector(
                           onTap: () => removeAt(id),
                           child: Container(

@@ -65,6 +65,19 @@ class UserModel {
     return await db.query('tripDetails', orderBy: 'ID DESC');
   }
 
+  /// Fetching a single trip record by its ID.
+  Future<Map<String, dynamic>?> getById(Database db, int id) async {
+    final rows = await db.query(
+      'tripDetails',
+      where: 'ID = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rows.isEmpty) return null;
+    return rows.first;
+  }
+
+
   /// Delete a trip by its ID.
   Future<void> deleteData(Database db, int id) async {
     await db.delete(

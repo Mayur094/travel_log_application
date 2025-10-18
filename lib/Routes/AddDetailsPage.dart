@@ -331,7 +331,7 @@ class _AddDetailsState extends State<AddDetails> {
                             );
                           }
                           await saveData();
-                          Navigator.pop(context,true);
+                          Navigator.pop(context,true);//Indicator that a new trip was added
                         } else {
                           if (mounted) {
                             ScaffoldMessenger.of(context).clearSnackBars();
