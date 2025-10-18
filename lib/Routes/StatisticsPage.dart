@@ -18,6 +18,7 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   double _totalDistance = 0.0;
   int _totalTrips = 0;
+  bool isDistanceLoading = true;
 
   List<FlSpot> chartSpots = [];
   List<String> chartLabels = [];
@@ -32,8 +33,11 @@ class _StatisticsPageState extends State<StatisticsPage> {
   Future<List<List<double>>> geocodePlaceNames(List<String> places) async {
     final coords = <List<double>>[];
     for (final place in places) {
+      //skips empty names
+      if(place.trim().isEmpty) continue;
+
       try {
-        final results = await locationFromAddress(place);
+        final results = await locationFromAddress(place).timeout(const Duration(seconds: 8));
         if (results.isNotEmpty) {
           final loc = results.first;
           coords.add([loc.latitude, loc.longitude]);
@@ -61,16 +65,26 @@ class _StatisticsPageState extends State<StatisticsPage> {
 
   // calculating total distance across consecutive trip locations (in insertion order)
   void calculateTotalDistance() async {
+    setState(() {
+      isDistanceLoading = true;
+    });
+
     try {
       final db = await userData.initDB();
-      final rows = await db.query('tripDetails', columns: ['location'], orderBy: 'id ASC');
-      final idRows = await db.query('tripDetails', columns: ['id'], orderBy: 'id ASC');
+      // use consistent column name 'ID' for ordering
+      final rows = await db.query('tripDetails', columns: ['location'], orderBy: 'ID ASC');
+      final idRows = await db.query('tripDetails', columns: ['ID'], orderBy: 'ID ASC');
       await db.close();
 
+      // update trips count
       setState(() => _totalTrips = idRows.length);
 
       if (rows.isEmpty) {
-        setState(() => _totalDistance = 0.0);
+        setState(() {
+          _totalDistance = 0.0;
+          isDistanceLoading = false;
+        });
+        debugPrint('No rows found for distance calculation.');
         return;
       }
 
@@ -79,12 +93,30 @@ class _StatisticsPageState extends State<StatisticsPage> {
           .where((s) => s.isNotEmpty)
           .toList();
 
-      if (places.isEmpty) {
-        setState(() => _totalDistance = 0.0);
+      debugPrint('Places for distance calculation: $places');
+
+      if (places.length < 2) {
+        // Not enough points to compute distance
+        setState(() {
+          _totalDistance = 0.0;
+          isDistanceLoading = false;
+        });
+        debugPrint('Not enough places to calculate distance (need at least 2).');
         return;
       }
 
       final coords = await geocodePlaceNames(places);
+      debugPrint('Geocoded coords: $coords (length ${coords.length})');
+
+      if (coords.length < 2) {
+        // geocoding produced too few valid coordinates
+        setState(() {
+          _totalDistance = 0.0;
+          isDistanceLoading = false;
+        });
+        debugPrint('Geocoding returned <2 coordinates — cannot compute distance.');
+        return;
+      }
 
       // sum pairwise distances
       double total = 0.0;
@@ -94,12 +126,21 @@ class _StatisticsPageState extends State<StatisticsPage> {
         total += _haversineKm(a[0], a[1], b[0], b[1]);
       }
 
-      setState(() => _totalDistance = total);
+      setState(() {
+        _totalDistance = total;
+        isDistanceLoading = false;
+      });
+      debugPrint('Total distance calculated: ${_totalDistance.toStringAsFixed(3)} km');
+
     } catch (e) {
       debugPrint('Error calculating distance: $e');
-      setState(() => _totalDistance = 0.0);
+      setState(() {
+        _totalDistance = 0.0;
+        isDistanceLoading = false;
+      });
     }
   }
+
 
   // prepares data for trips-per-month chart
   void tripsPerMonth() async {
@@ -217,8 +258,8 @@ class _StatisticsPageState extends State<StatisticsPage> {
                     'Total Distance',
                     (_totalTrips == 0)
                         ? '0.0'
-                        : (_totalDistance == 0.0)
-                        ? 'Loading...'
+                        : (isDistanceLoading)
+                        ? 'Calculating...'
                         : '${_totalDistance.toStringAsFixed(2)}km',
                   ),
                 ],
